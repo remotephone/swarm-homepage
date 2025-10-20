@@ -100,10 +100,26 @@ class ServiceDiscovery:
             service_url = labels.get('homepage.url', labels.get('swarm.homepage.url', ''))
         
         if service_url:
+            # Extract hostname for default description
+            try:
+                from urllib.parse import urlparse
+                parsed_url = urlparse(service_url)
+                hostname = parsed_url.hostname or parsed_url.netloc
+            except Exception:
+                hostname = service_url
+            
+            # Get values with defaults
+            name = labels.get('homepage.name', labels.get('swarm.homepage.name', service_name))
+            description = labels.get('homepage.description', labels.get('swarm.homepage.description', ''))
+            
+            # If no description provided, create a default one
+            if not description:
+                description = f'Service available at {hostname}'
+            
             return {
-                'name': labels.get('homepage.name', labels.get('swarm.homepage.name', service_name)),
+                'name': name,
                 'url': service_url,
-                'description': labels.get('homepage.description', labels.get('swarm.homepage.description', '')),
+                'description': description,
                 'icon': labels.get('homepage.icon', labels.get('swarm.homepage.icon', '')),
                 'category': labels.get('homepage.category', labels.get('swarm.homepage.category', 'Services'))
             }

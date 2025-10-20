@@ -93,6 +93,35 @@ class TestServiceDiscovery(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result['name'], 'Swarm App')
         self.assertEqual(result['description'], 'Using alternative labels')
+    
+    def test_extract_service_info_with_default_description(self):
+        """Test that services without description get a default one"""
+        labels = {
+            'traefik.enable': 'true',
+            'traefik.http.routers.myapp.rule': 'Host(`myapp.example.com`)',
+            'homepage.name': 'My App'
+        }
+        
+        result = self.discovery._extract_service_info('myapp', labels)
+        
+        self.assertIsNotNone(result)
+        self.assertEqual(result['name'], 'My App')
+        self.assertEqual(result['description'], 'Service available at myapp.example.com')
+    
+    def test_extract_service_info_minimal_labels(self):
+        """Test extracting service info with only required Traefik labels"""
+        labels = {
+            'traefik.enable': 'true',
+            'traefik.http.routers.webapp.rule': 'Host(`webapp.local`)'
+        }
+        
+        result = self.discovery._extract_service_info('webapp-container', labels)
+        
+        self.assertIsNotNone(result)
+        self.assertEqual(result['name'], 'webapp-container')
+        self.assertEqual(result['url'], 'http://webapp.local')
+        self.assertEqual(result['description'], 'Service available at webapp.local')
+        self.assertEqual(result['category'], 'Services')
 
 
 class TestFlaskApp(unittest.TestCase):

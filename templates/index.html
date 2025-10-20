@@ -11,6 +11,7 @@
         <header>
             <h1>🐝 Swarm Homepage</h1>
             <p class="subtitle">Your Docker Swarm Services Dashboard</p>
+            <button id="refresh-button" class="refresh-button" onclick="manualRefresh()">🔄 Refresh</button>
         </header>
         
         <div id="loading" class="loading">
@@ -34,6 +35,18 @@
     
     <script>
         const REFRESH_INTERVAL = {{ refresh_interval }} * 1000;
+        let autoRefreshTimer = null;
+        
+        function manualRefresh() {
+            const button = document.getElementById('refresh-button');
+            button.disabled = true;
+            button.textContent = '🔄 Refreshing...';
+            
+            loadServices().finally(() => {
+                button.disabled = false;
+                button.textContent = '🔄 Refresh';
+            });
+        }
         
         async function loadServices() {
             const loading = document.getElementById('loading');
@@ -143,8 +156,15 @@
         // Initial load
         loadServices();
         
-        // Auto-refresh
-        setInterval(loadServices, REFRESH_INTERVAL);
+        // Auto-refresh with restart capability
+        function startAutoRefresh() {
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+            }
+            autoRefreshTimer = setInterval(loadServices, REFRESH_INTERVAL);
+        }
+        
+        startAutoRefresh();
     </script>
 </body>
 </html>
