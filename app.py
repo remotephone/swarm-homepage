@@ -52,14 +52,15 @@ class ServiceDiscovery:
             return services
         
         try:
-            # Get all containers
-            containers = self.docker_client.containers.list()
-            logger.info(f"Found {len(containers)} containers to review")
-            for container in containers:
-                labels = container.labels
+            # Get all services (Docker Swarm)
+            swarm_services = self.docker_client.services.list()
+            logger.info(f"Found {len(swarm_services)} services to review")
+            for service in swarm_services:
+                # Get labels from service spec
+                labels = service.attrs.get('Spec', {}).get('Labels', {})
                 
                 # Look for Traefik labels
-                service_info = self._extract_service_info(container.name, labels)
+                service_info = self._extract_service_info(service.name, labels)
                 if service_info:
                     services.append(service_info)
             
@@ -69,17 +70,17 @@ class ServiceDiscovery:
         
         return services
     
-    def _extract_service_info(self, container_name: str, labels: Dict) -> Optional[Dict]:
-        """Extract service information from container labels"""
+    def _extract_service_info(self, service_name: str, labels: Dict) -> Optional[Dict]:
+        """Extract service information from service labels"""
         # Check if Traefik is enabled
         traefik_enabled = labels.get('traefik.enable', '').lower() == 'true'
-        logger.info(f"Traefik enabled for {container_name}")
+        logger.info(f"Traefik enabled for {service_name}")
         if not traefik_enabled:
             return None
         
         # Try to find service URL from various Traefik label formats
         service_url = None
-        service_name = container_name
+        display_name = service_name
         
         # Check for common Traefik label patterns
         for key, value in labels.items():
@@ -96,7 +97,7 @@ class ServiceDiscovery:
             
             # Look for service name
             if 'traefik.http.services' in key and '.loadbalancer' in key:
-                service_name = key.split('.')[3]  # Extract service name from label
+                display_name = key.split('.')[3]  # Extract service name from label
         
         # Fallback: check for custom homepage labels
         if not service_url:
@@ -113,7 +114,7 @@ class ServiceDiscovery:
                 hostname = service_url
             
             # Get values with defaults
-            name = labels.get('homepage.name', labels.get('swarm.homepage.name', service_name))
+            name = labels.get('homepage.name', labels.get('swarm.homepage.name', display_name))
             description = labels.get('homepage.description', labels.get('swarm.homepage.description', ''))
             
             # If no description provided, create a default one
