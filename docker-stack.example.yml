@@ -1,0 +1,70 @@
+version: '3.8'
+
+# Example Docker Swarm stack deployment
+# Deploy with: docker stack deploy -c docker-stack.example.yml homepage
+
+services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.swarmmode=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - target: 80
+        published: 80
+        mode: host
+      - target: 443
+        published: 443
+        mode: host
+      - target: 8080
+        published: 8080
+        mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik.rule=Host(`traefik.example.com`)"
+        - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+        - "homepage.name=Traefik"
+        - "homepage.description=Reverse Proxy & Load Balancer"
+        - "homepage.category=Infrastructure"
+
+  swarm-homepage:
+    image: swarm-homepage:latest
+    environment:
+      - TRAEFIK_API_URL=http://traefik:8080/api
+      - DOCKER_SOCKET=unix://var/run/docker.sock
+      - REFRESH_INTERVAL=60
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.homepage.rule=Host(`home.example.com`)"
+        - "traefik.http.services.homepage.loadbalancer.server.port=5000"
+        - "homepage.name=Swarm Homepage"
+        - "homepage.description=Service Discovery Dashboard"
+        - "homepage.category=Infrastructure"
+
+networks:
+  traefik:
+    driver: overlay
+    attachable: true
