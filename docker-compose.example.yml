@@ -1,0 +1,170 @@
+version: '3.8'
+
+# Example configuration showing various services with different label configurations
+# This example demonstrates the swarm-homepage application with multiple sample services
+
+services:
+  # Traefik reverse proxy
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+      # Homepage labels
+      - "homepage.name=Traefik Dashboard"
+      - "homepage.description=Reverse proxy and load balancer"
+      - "homepage.category=Infrastructure"
+      - "homepage.icon=https://raw.githubusercontent.com/traefik/traefik/master/docs/content/assets/img/traefik.logo.png"
+    restart: unless-stopped
+
+  # Swarm Homepage
+  swarm-homepage:
+    build: .
+    image: swarm-homepage:latest
+    container_name: swarm-homepage
+    ports:
+      - "5000:5000"
+    environment:
+      - TRAEFIK_API_URL=http://traefik:8080/api
+      - DOCKER_SOCKET=unix://var/run/docker.sock
+      - REFRESH_INTERVAL=60
+      - PORT=5000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage.rule=Host(`home.localhost`)"
+      - "traefik.http.routers.homepage.entrypoints=web"
+      - "traefik.http.services.homepage.loadbalancer.server.port=5000"
+      # Self-reference
+      - "homepage.name=Homepage"
+      - "homepage.description=Service Discovery Dashboard"
+      - "homepage.category=Infrastructure"
+    restart: unless-stopped
+
+  # Example service 1: Simple web application
+  webapp:
+    image: nginx:alpine
+    container_name: webapp
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webapp.rule=Host(`webapp.localhost`)"
+      - "traefik.http.routers.webapp.entrypoints=web"
+      - "traefik.http.services.webapp.loadbalancer.server.port=80"
+      # Homepage labels
+      - "homepage.name=Web Application"
+      - "homepage.description=Main web application"
+      - "homepage.category=Applications"
+    restart: unless-stopped
+
+  # Example service 2: API service
+  api:
+    image: nginx:alpine
+    container_name: api
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.localhost`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.services.api.loadbalancer.server.port=80"
+      # Homepage labels
+      - "homepage.name=REST API"
+      - "homepage.description=Backend API service"
+      - "homepage.category=Applications"
+    restart: unless-stopped
+
+  # Example service 3: Database admin tool
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adminer.rule=Host(`db.localhost`)"
+      - "traefik.http.routers.adminer.entrypoints=web"
+      - "traefik.http.services.adminer.loadbalancer.server.port=8080"
+      # Homepage labels with custom icon
+      - "homepage.name=Database Admin"
+      - "homepage.description=Adminer database management"
+      - "homepage.category=Tools"
+      - "homepage.icon=https://www.adminer.org/static/designs/konya/favicon.ico"
+    restart: unless-stopped
+
+  # Example service 4: Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`metrics.localhost`)"
+      - "traefik.http.routers.prometheus.entrypoints=web"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      # Homepage labels
+      - "homepage.name=Prometheus"
+      - "homepage.description=Metrics and monitoring"
+      - "homepage.category=Monitoring"
+    restart: unless-stopped
+
+  # Example service 5: Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - traefik
+    environment:
+      - GF_SERVER_ROOT_URL=http://grafana.localhost
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
+      - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      # Homepage labels
+      - "homepage.name=Grafana"
+      - "homepage.description=Metrics visualization and dashboards"
+      - "homepage.category=Monitoring"
+    restart: unless-stopped
+
+  # Example service 6: Using alternative label format
+  docs:
+    image: nginx:alpine
+    container_name: docs
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.docs.rule=Host(`docs.localhost`)"
+      - "traefik.http.routers.docs.entrypoints=web"
+      - "traefik.http.services.docs.loadbalancer.server.port=80"
+      # Alternative label format (swarm.homepage.*)
+      - "swarm.homepage.name=Documentation"
+      - "swarm.homepage.description=Project documentation"
+      - "swarm.homepage.category=Documentation"
+    restart: unless-stopped
+
+networks:
+  traefik:
+    driver: bridge
