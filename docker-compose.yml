@@ -2,8 +2,9 @@ version: '3.8'
 
 services:
   swarm-homepage:
-    build: .
-    image: swarm-homepage:latest
+    # To build locally instead of using pre-built image, uncomment the next line:
+    # build: .
+    image: ghcr.io/remotephone/swarm-homepage:latest
     container_name: swarm-homepage
     ports:
       - "5000:5000"

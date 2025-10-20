@@ -34,6 +34,20 @@ docker-compose up -d
 
 ### Using Docker
 
+#### Using Pre-built Image from GitHub Container Registry
+
+```bash
+# Pull and run the latest image
+docker run -d \
+  -p 5000:5000 \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -e TRAEFIK_API_URL=http://traefik:8080/api \
+  -e REFRESH_INTERVAL=60 \
+  ghcr.io/remotephone/swarm-homepage:latest
+```
+
+#### Building Locally
+
 ```bash
 # Build the image
 docker build -t swarm-homepage .
