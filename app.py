@@ -85,11 +85,13 @@ class ServiceDiscovery:
             # Look for router rule with Host
             if 'traefik.http.routers' in key and '.rule' in key:
                 # Extract hostname from rule like "Host(`example.com`)"
+                logger.info("extracting hostname from Host rule")
                 if 'Host(' in value:
                     hostname = value.split('Host(')[1].split(')')[0].strip('`').strip('"')
                     # Determine protocol
                     protocol = 'https' if 'https' in key or labels.get(key.replace('.rule', '.tls'), '') else 'http'
                     service_url = f"{protocol}://{hostname}"
+                    logger.info(f"Got service URL {service_url}")
             
             # Look for service name
             if 'traefik.http.services' in key and '.loadbalancer' in key:
@@ -98,6 +100,7 @@ class ServiceDiscovery:
         # Fallback: check for custom homepage labels
         if not service_url:
             service_url = labels.get('homepage.url', labels.get('swarm.homepage.url', ''))
+            logger.info("no service url found")
         
         if service_url:
             # Extract hostname for default description
