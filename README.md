@@ -13,7 +13,9 @@ A service discovery dashboard for Docker Swarm running behind Traefik. Automatic
 
 ## How It Works
 
-The application connects to the Docker socket to read container labels and discover services running behind Traefik. It can also connect to the Traefik API as a fallback.
+The application connects to the Docker socket to read service labels from Docker Swarm services and discover services running behind Traefik. It can also connect to the Traefik API as a fallback.
+
+For Docker Swarm deployments, the application uses the Docker Swarm services API to read labels from service definitions (under `deploy.labels` in your stack files).
 
 ## Quick Start
 
@@ -74,7 +76,34 @@ Configure the application using environment variables:
 
 ## Service Labels
 
-To make your services appear on the homepage, add these labels to your containers:
+To make your services appear on the homepage, add labels to your services:
+
+### For Docker Swarm (Recommended)
+
+In Docker Swarm mode, labels should be placed under `deploy.labels`:
+
+```yaml
+services:
+  myservice:
+    image: myimage:latest
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.myservice.rule=Host(`myservice.example.com`)"
+```
+
+### For Docker Compose
+
+In Docker Compose mode (non-swarm), labels are placed directly on the service:
+
+```yaml
+services:
+  myservice:
+    image: myimage:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.myservice.rule=Host(`myservice.example.com`)"
+```
 
 ### Required Labels
 
@@ -84,13 +113,15 @@ labels:
   - "traefik.http.routers.myservice.rule=Host(`myservice.example.com`)"
 ```
 
+**Note:** For Docker Swarm deployments, these labels should be placed under `deploy.labels` as shown in the Docker Swarm example above.
+
 ### Optional Homepage Labels
 
 Enhance your service's appearance with these optional labels:
 
 ```yaml
 labels:
-  # Display name (defaults to container name)
+  # Display name (defaults to service name)
   - "homepage.name=My Service"
   
   # Description shown under the service
@@ -106,6 +137,8 @@ labels:
   - "homepage.url=https://myservice.example.com"
 ```
 
+**Note:** For Docker Swarm deployments, these labels should be placed under `deploy.labels`.
+
 ### Label Format Alternatives
 
 The application supports multiple label formats:
@@ -114,7 +147,9 @@ The application supports multiple label formats:
 
 ## Example Service Configuration
 
-Here's a complete example of a service with homepage labels:
+### Docker Compose Example
+
+Here's a complete example of a service with homepage labels for Docker Compose:
 
 ```yaml
 version: '3.8'
@@ -139,6 +174,39 @@ services:
 
 networks:
   traefik:
+    external: true
+```
+
+### Docker Swarm Example
+
+Here's the same service configured for Docker Swarm (note labels under `deploy.labels`):
+
+```yaml
+version: '3.8'
+
+services:
+  myapp:
+    image: myapp:latest
+    networks:
+      - traefik
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.myapp.rule=Host(`myapp.example.com`)"
+        - "traefik.http.routers.myapp.entrypoints=websecure"
+        - "traefik.http.routers.myapp.tls.certresolver=letsencrypt"
+        - "traefik.http.services.myapp.loadbalancer.server.port=80"
+        
+        # Homepage labels
+        - "homepage.name=My Application"
+        - "homepage.description=Main application dashboard"
+        - "homepage.category=Applications"
+        - "homepage.icon=https://myapp.example.com/favicon.ico"
+
+networks:
+  traefik:
+    driver: overlay
     external: true
 ```
 
