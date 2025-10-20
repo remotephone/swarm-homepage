@@ -54,7 +54,7 @@ class ServiceDiscovery:
         try:
             # Get all containers
             containers = self.docker_client.containers.list()
-            
+            logger.info(f"Found {len(containers)} containers to review"
             for container in containers:
                 labels = container.labels
                 
@@ -88,7 +88,7 @@ class ServiceDiscovery:
                 if 'Host(' in value:
                     hostname = value.split('Host(')[1].split(')')[0].strip('`').strip('"')
                     # Determine protocol
-                    protocol = 'https' if 'websecure' in key or labels.get(key.replace('.rule', '.tls'), '') else 'http'
+                    protocol = 'https' if 'https' in key or labels.get(key.replace('.rule', '.tls'), '') else 'http'
                     service_url = f"{protocol}://{hostname}"
             
             # Look for service name
