@@ -24,7 +24,7 @@ class TestServiceDiscovery(unittest.TestCase):
         )
     
     def test_extract_service_info_with_valid_labels(self):
-        """Test extracting service info from valid container labels"""
+        """Test extracting service info from valid service labels"""
         labels = {
             'traefik.enable': 'true',
             'traefik.http.routers.myapp.rule': 'Host(`myapp.example.com`)',
@@ -115,13 +115,53 @@ class TestServiceDiscovery(unittest.TestCase):
             'traefik.http.routers.webapp.rule': 'Host(`webapp.local`)'
         }
         
-        result = self.discovery._extract_service_info('webapp-container', labels)
+        result = self.discovery._extract_service_info('webapp-service', labels)
         
         self.assertIsNotNone(result)
-        self.assertEqual(result['name'], 'webapp-container')
+        self.assertEqual(result['name'], 'webapp-service')
         self.assertEqual(result['url'], 'http://webapp.local')
         self.assertEqual(result['description'], 'Service available at webapp.local')
         self.assertEqual(result['category'], 'Services')
+    
+    @patch('docker.DockerClient')
+    def test_get_services_from_docker_uses_services_api(self, mock_docker_client_class):
+        """Test that get_services_from_docker uses services.list() instead of containers.list()"""
+        # Create a mock service
+        mock_service = Mock()
+        mock_service.name = 'test-service'
+        mock_service.attrs = {
+            'ID': 'service123',
+            'Spec': {
+                'Name': 'test-service',
+                'Labels': {
+                    'traefik.enable': 'true',
+                    'traefik.http.routers.test.rule': 'Host(`test.example.com`)',
+                    'homepage.name': 'Test Service',
+                    'homepage.description': 'Test Description'
+                }
+            }
+        }
+        
+        # Setup mock docker client
+        mock_client = Mock()
+        mock_client.services.list.return_value = [mock_service]
+        mock_client.ping.return_value = True
+        mock_docker_client_class.return_value = mock_client
+        
+        # Create discovery instance
+        discovery = ServiceDiscovery('unix://var/run/docker.sock', 'http://traefik:8080/api')
+        
+        # Get services
+        services = discovery.get_services_from_docker()
+        
+        # Verify services.list() was called
+        mock_client.services.list.assert_called_once()
+        
+        # Verify we got the expected service
+        self.assertEqual(len(services), 1)
+        self.assertEqual(services[0]['name'], 'Test Service')
+        self.assertEqual(services[0]['url'], 'http://test.example.com')
+        self.assertEqual(services[0]['description'], 'Test Description')
 
 
 class TestFlaskApp(unittest.TestCase):
