@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarm Homepage</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🐝 Swarm Homepage</h1>
+            <p class="subtitle">Your Docker Swarm Services Dashboard</p>
+        </header>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Discovering services...</p>
+        </div>
+        
+        <div id="error" class="error" style="display: none;">
+            <p>Failed to load services. Please try again.</p>
+            <button onclick="loadServices()">Retry</button>
+        </div>
+        
+        <div id="services-container">
+            <!-- Services will be loaded here -->
+        </div>
+        
+        <footer>
+            <p>Auto-refreshes every {{ refresh_interval }} seconds</p>
+        </footer>
+    </div>
+    
+    <script>
+        const REFRESH_INTERVAL = {{ refresh_interval }} * 1000;
+        
+        async function loadServices() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const container = document.getElementById('services-container');
+            
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/services');
+                if (!response.ok) throw new Error('Failed to fetch services');
+                
+                const services = await response.json();
+                loading.style.display = 'none';
+                
+                if (services.length === 0) {
+                    container.innerHTML = '<div class="no-services"><p>No services found. Make sure your containers have the appropriate labels.</p></div>';
+                    return;
+                }
+                
+                // Group services by category
+                const grouped = {};
+                services.forEach(service => {
+                    const category = service.category || 'Services';
+                    if (!grouped[category]) {
+                        grouped[category] = [];
+                    }
+                    grouped[category].push(service);
+                });
+                
+                // Render services
+                container.innerHTML = '';
+                Object.keys(grouped).sort().forEach(category => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'category';
+                    
+                    const categoryTitle = document.createElement('h2');
+                    categoryTitle.textContent = category;
+                    categoryDiv.appendChild(categoryTitle);
+                    
+                    const servicesGrid = document.createElement('div');
+                    servicesGrid.className = 'services-grid';
+                    
+                    grouped[category].forEach(service => {
+                        const serviceCard = createServiceCard(service);
+                        servicesGrid.appendChild(serviceCard);
+                    });
+                    
+                    categoryDiv.appendChild(servicesGrid);
+                    container.appendChild(categoryDiv);
+                });
+            } catch (err) {
+                console.error('Error loading services:', err);
+                loading.style.display = 'none';
+                error.style.display = 'block';
+            }
+        }
+        
+        function createServiceCard(service) {
+            const card = document.createElement('a');
+            card.className = 'service-card';
+            card.href = service.url;
+            card.target = '_blank';
+            card.rel = 'noopener noreferrer';
+            
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'service-icon';
+            
+            if (service.icon) {
+                const icon = document.createElement('img');
+                icon.src = service.icon;
+                icon.alt = service.name;
+                icon.onerror = function() {
+                    this.style.display = 'none';
+                    iconDiv.innerHTML = '<span class="icon-fallback">' + service.name.substring(0, 2).toUpperCase() + '</span>';
+                };
+                iconDiv.appendChild(icon);
+            } else {
+                // Try to get favicon from the service URL
+                const favicon = document.createElement('img');
+                const url = new URL(service.url);
+                favicon.src = `${url.origin}/favicon.ico`;
+                favicon.alt = service.name;
+                favicon.onerror = function() {
+                    this.style.display = 'none';
+                    iconDiv.innerHTML = '<span class="icon-fallback">' + service.name.substring(0, 2).toUpperCase() + '</span>';
+                };
+                iconDiv.appendChild(favicon);
+            }
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'service-name';
+            nameDiv.textContent = service.name;
+            
+            const descDiv = document.createElement('div');
+            descDiv.className = 'service-description';
+            descDiv.textContent = service.description || service.url;
+            
+            card.appendChild(iconDiv);
+            card.appendChild(nameDiv);
+            card.appendChild(descDiv);
+            
+            return card;
+        }
+        
+        // Initial load
+        loadServices();
+        
+        // Auto-refresh
+        setInterval(loadServices, REFRESH_INTERVAL);
+    </script>
+</body>
+</html>
