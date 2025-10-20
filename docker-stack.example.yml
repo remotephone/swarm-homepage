@@ -41,7 +41,7 @@ services:
         - "homepage.category=Infrastructure"
 
   swarm-homepage:
-    image: swarm-homepage:latest
+    image: ghcr.io/remotephone/swarm-homepage:latest
     environment:
       - TRAEFIK_API_URL=http://traefik:8080/api
       - DOCKER_SOCKET=unix://var/run/docker.sock
