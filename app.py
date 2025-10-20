@@ -73,6 +73,7 @@ class ServiceDiscovery:
         """Extract service information from container labels"""
         # Check if Traefik is enabled
         traefik_enabled = labels.get('traefik.enable', '').lower() == 'true'
+        logger.info(f"Traefik enabled for {container_name}")
         if not traefik_enabled:
             return None
         
@@ -85,7 +86,7 @@ class ServiceDiscovery:
             # Look for router rule with Host
             if 'traefik.http.routers' in key and '.rule' in key:
                 # Extract hostname from rule like "Host(`example.com`)"
-                logger.info("extracting hostname from Host rule")
+                logger.info("Found http.routers, extracting hostname from Host rule")
                 if 'Host(' in value:
                     hostname = value.split('Host(')[1].split(')')[0].strip('`').strip('"')
                     # Determine protocol
