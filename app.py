@@ -54,7 +54,7 @@ class ServiceDiscovery:
         try:
             # Get all containers
             containers = self.docker_client.containers.list()
-            logger.info(f"Found {len(containers)} containers to review"
+            logger.info(f"Found {len(containers)} containers to review")
             for container in containers:
                 labels = container.labels
                 
